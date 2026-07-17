@@ -171,7 +171,9 @@ def is_aurea_opportunity(listing: Listing, eval_data: Evaluation, search: Search
     # Age check (configurable, defaults to 30 days)
     max_age = search.vehicle.max_age_days if search.vehicle.max_age_days is not None else 30
     if listing.first_seen_at:
-        age_days = (datetime.utcnow() - listing.first_seen_at).days
+        from datetime import timezone
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        age_days = (now_utc - listing.first_seen_at).days
         if age_days > max_age:
             return False
             

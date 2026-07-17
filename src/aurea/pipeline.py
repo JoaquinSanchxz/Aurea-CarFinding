@@ -15,7 +15,7 @@ from aurea.market import analyze_market
 from aurea.risk import calculate_risk
 from aurea.scoring import evaluate_listing, is_aurea_opportunity
 from aurea.telegram import send_telegram_alert
-from aurea.models import Listing, Evaluation, Notification
+from aurea.models import Listing, Evaluation, Notification, get_utc_now
 
 logger = logging.getLogger("aurea.pipeline")
 
@@ -179,7 +179,7 @@ def run_pipeline() -> Dict[str, int]:
                         notification = Notification(
                             listing_id=listing.id,
                             opportunity_id=listing.opportunity_id,
-                            sent_at=datetime.utcnow(),
+                            sent_at=get_utc_now(),
                             status="sent" if success else "failed",
                             error_message=None if success else "Telegram post failed"
                         )
@@ -225,7 +225,7 @@ def retry_failed_notifications():
         success = send_telegram_alert(listing, eval_data)
         if success:
             notif.status = "sent"
-            notif.sent_at = datetime.utcnow()
+            notif.sent_at = get_utc_now()
             notif.error_message = None
             session.add(notif)
             session.commit()

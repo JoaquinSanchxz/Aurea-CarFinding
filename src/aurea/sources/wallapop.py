@@ -69,7 +69,8 @@ class WallapopConnector(SourceConnector):
         return results
 
 def get_wallapop_fixtures() -> List[RawListing]:
-    now = datetime.utcnow()
+    from datetime import timezone
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     
     # We define a rich variety of fixtures to satisfy tests
     return [
@@ -259,7 +260,7 @@ def get_wallapop_fixtures() -> List[RawListing]:
             source="wallapop",
             title="Volkswagen Golf 2.0 TDI 150cv Sport",
             description="Coche impecable en perfecto estado. Un solo propietario, km certificados, mantenimiento oficial, neumáticos nuevos, siempre en garaje, muy cuidado.",
-            url="https://es.wallapop.com/item/vw-golf-tdi-wp_011",
+            url="https://es.wallapop.com/item/volkswagen-golf-2016-1282503179",
             price=8500.0,
             make="Volkswagen",
             model="Golf",

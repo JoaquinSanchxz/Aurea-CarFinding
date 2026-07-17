@@ -39,7 +39,8 @@ class CochesNetConnector(SourceConnector):
         return results
 
 def get_coches_net_fixtures() -> List[RawListing]:
-    now = datetime.utcnow()
+    from datetime import timezone
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     # Return multiple Corollas to act as high-quality comparables
     return [
         RawListing(

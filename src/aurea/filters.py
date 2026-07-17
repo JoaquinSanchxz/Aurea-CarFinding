@@ -233,7 +233,9 @@ def pre_filter_listing(listing: Listing, search: SearchConfig, session=None) -> 
     # 3. Time limit (Configurable age in days, defaults to 30)
     max_age = search.vehicle.max_age_days if search.vehicle.max_age_days is not None else 30
     if listing.first_seen_at:
-        age_days = (datetime.utcnow() - listing.first_seen_at).days
+        from datetime import timezone
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        age_days = (now_utc - listing.first_seen_at).days
         if age_days > max_age:
             return False, f"Con más de {max_age} días"
 

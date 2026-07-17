@@ -41,7 +41,8 @@ class MilanunciosConnector(SourceConnector):
         return results
 
 def get_milanuncios_fixtures() -> List[RawListing]:
-    now = datetime.utcnow()
+    from datetime import timezone
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     return [
         # Fixture 1: Duplicate of WP_001 (Same Corolla, different ID/portal)
         # Used for testing deduplication between portals

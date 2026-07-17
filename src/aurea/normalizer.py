@@ -84,8 +84,8 @@ def normalize_listing(raw: RawListing) -> Listing:
     if mileage is None or mileage < 0:
         mileage = 0
         
-    from datetime import datetime
-    first_seen = datetime.utcnow()
+    from aurea.models import get_utc_now
+    first_seen = get_utc_now()
     if raw.published_at:
         try:
             first_seen = datetime.fromisoformat(raw.published_at)

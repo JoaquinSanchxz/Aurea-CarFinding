@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime, timedelta
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from aurea.models import Listing, Evaluation, PriceHistory, Notification
+from aurea.models import Listing, Evaluation, PriceHistory, Notification, get_utc_now
 from aurea.config import SearchConfig, VehicleFilter, PriceFilter, ExclusionsFilter
 from aurea.normalizer import normalize_listing
 from aurea.filters import pre_filter_listing, is_damaged, is_financed
@@ -71,7 +71,7 @@ def test_old_listing(search_config):
         fuel="hybrid", transmission="automatic"
     )
     listing = normalize_listing(raw)
-    listing.first_seen_at = datetime.utcnow() - timedelta(days=35)
+    listing.first_seen_at = get_utc_now() - timedelta(days=35)
     keep, reason = pre_filter_listing(listing, search_config)
     assert keep is False
     assert "Con más de 30 días" in reason
