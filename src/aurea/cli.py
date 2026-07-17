@@ -1,4 +1,5 @@
 import sys
+import logging
 from datetime import datetime
 from typing import Optional
 import typer
@@ -12,8 +13,29 @@ from sqlmodel import select, Session, func
 from aurea.pipeline import run_pipeline, retry_failed_notifications
 from aurea.database import get_session, init_db
 from aurea.models import Listing, Evaluation, Notification
-from aurea.config import load_settings, load_searches
+from aurea.config import load_settings, load_searches, PROJECT_ROOT
 from aurea.telegram import send_test_message
+
+def setup_logging():
+    log_dir = PROJECT_ROOT / "data"
+    log_dir.mkdir(exist_ok=True)
+    log_file = log_dir / "aurea.log"
+    
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    
+    # Remove existing handlers
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+        
+    # File handler
+    file_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(file_formatter)
+    root_logger.addHandler(file_handler)
+
+setup_logging()
 
 app = typer.Typer(help="Aurea: Monitoreo de coches y alertas premium en Telegram.")
 console = Console()

@@ -8,5 +8,6 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 
-# Local databases
+# Local databases and logs
 data/aurea.db
+data/*.log

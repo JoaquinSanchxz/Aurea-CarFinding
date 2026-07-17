@@ -44,7 +44,10 @@ def double_validate_opportunity(session: Session, listing: Listing, eval_data: E
         
     # 5. Recheck overall score and adjusted savings (respecting custom search thresholds)
     min_saving = search.price.minimum_adjusted_saving_eur if search.price.minimum_adjusted_saving_eur is not None else 3000.0
-    if eval_data.score_global < 95.0 or eval_data.adjusted_saving_eur < min_saving:
+    required_rating = search.alerting.required_rating if (search and search.alerting) else 10
+    min_global = 95.0 if required_rating >= 10 else 90.0
+    
+    if eval_data.score_global < min_global or eval_data.adjusted_saving_eur < min_saving:
         return False
         
     return True
@@ -84,6 +87,7 @@ def run_pipeline() -> Dict[str, int]:
         for conn in connectors:
             try:
                 collected = conn.collect(search)
+                logger.info(f"Recopilados {len(collected)} anuncios de {conn.name}")
                 summary["encontrados"] += len(collected)
                 raw_listings.extend(collected)
             except Exception as e:
@@ -98,10 +102,11 @@ def run_pipeline() -> Dict[str, int]:
             search = searches[0]
             keep, discard_reason = pre_filter_listing(listing, search)
             if keep:
+                logger.info(f"VISTO [OK]: {listing.source.upper()} | {listing.make} {listing.model} | {listing.price}€ | {listing.year} | {listing.mileage_km}km | {listing.location}")
                 valid_listings.append(listing)
             else:
                 summary["descartados"] += 1
-                logger.debug(f"Discarded listing {listing.source_id}: {discard_reason}")
+                logger.info(f"VISTO [DESCARTADO]: {listing.source.upper()} | {listing.title} ({listing.price}€) -> {discard_reason}")
         except Exception as e:
             summary["descartados"] += 1
             logger.error(f"Error normalizing listing: {e}")
@@ -127,6 +132,7 @@ def run_pipeline() -> Dict[str, int]:
             session.commit()
             
             summary["analizados"] += 1
+            logger.info(f"ANALIZADO: {listing.make} {listing.model} ({listing.year}) | Precio: {listing.price}€ | Score Global: {eval_data.score_global}/100 | Riesgo: {eval_data.risk_score}/100")
             
             # Check Aurea eligibility
             is_aurea = is_aurea_opportunity(listing, eval_data, search)
@@ -155,6 +161,7 @@ def run_pipeline() -> Dict[str, int]:
                     session.commit()
                     
                     summary["aurea"] += 1
+                    logger.warning(f"¡NUEVA OPORTUNIDAD AUREA DETECTADA! {listing.make} {listing.model} - Puntuación: {listing.rating}/10 - Ahorro: {eval_data.adjusted_saving_eur}€")
                     
                     if not already_notified:
                         # Attempt to notify
