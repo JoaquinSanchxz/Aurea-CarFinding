@@ -5,8 +5,10 @@ import yaml
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Resolve root directory
+# Resolve root directory (fallback to CWD if config is not found in resolved package directory)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if not (PROJECT_ROOT / "config").exists():
+    PROJECT_ROOT = Path.cwd()
 
 class VehicleFilter(BaseModel):
     makes: List[str] = Field(default_factory=list)

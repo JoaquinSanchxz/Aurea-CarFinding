@@ -22,7 +22,7 @@ jobs:
       run: |
         python -m venv .venv
         .venv/bin/pip install --upgrade pip
-        .venv/bin/pip install .
+        .venv/bin/pip install -e .
 
     - name: Run Aurea Monitor
       env:
