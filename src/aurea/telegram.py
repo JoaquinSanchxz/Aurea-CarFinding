@@ -52,7 +52,8 @@ def format_telegram_message(listing: Listing, eval_data: Evaluation) -> str:
     eff_label = format_efficiency(eval_data.efficiency_score)
     resale_label = format_resale(eval_data.resale_score)
 
-    msg = f"""🏆 AUREA — OPORTUNIDAD 10/10
+    rating_str = f"{int(listing.rating)}/10" if listing.rating else "10/10"
+    msg = f"""🏆 AUREA — OPORTUNIDAD {rating_str}
 
 {listing.make} {listing.model} {listing.year}
 {listing.year} · {listing.mileage_km:,} km · {"Automático" if listing.transmission == "automatic" else "Manual"}

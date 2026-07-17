@@ -25,7 +25,7 @@ searches:
         - malaga
 
     alerting:
-      required_rating: 10
+      required_rating: 9
       maximum_alerts_per_run: 2
 
     exclusions:

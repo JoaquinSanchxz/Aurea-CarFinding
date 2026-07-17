@@ -175,19 +175,42 @@ def is_aurea_opportunity(listing: Listing, eval_data: Evaluation, search: Search
         if age_days > max_age:
             return False
             
-    # Basic score metrics thresholds
-    if eval_data.score_global < 95.0:
+    # Basic score metrics thresholds (relaxed if required_rating is 9)
+    required_rating = search.alerting.required_rating if (search and search.alerting) else 10
+    
+    if required_rating >= 10:
+        min_global = 95.0
+        max_risk = 15.0
+        min_market_conf = 0.90
+        min_vehicle_conf = 0.88
+        min_reliability = 85.0
+        min_parts = 80.0
+        min_maint = 75.0
+        min_resale = 78.0
+        min_coherency = 92.0
+    else:
+        min_global = 90.0
+        max_risk = 20.0
+        min_market_conf = 0.85
+        min_vehicle_conf = 0.83
+        min_reliability = 80.0
+        min_parts = 75.0
+        min_maint = 70.0
+        min_resale = 73.0
+        min_coherency = 88.0
+
+    if eval_data.score_global < min_global:
         return False
-    if eval_data.risk_score > 15.0:
+    if eval_data.risk_score > max_risk:
         return False
-    if eval_data.market_confidence < 0.90:
+    if eval_data.market_confidence < min_market_conf:
         return False
-    if eval_data.vehicle_confidence < 0.88:
+    if eval_data.vehicle_confidence < min_vehicle_conf:
         return False
         
     # Comparables count
     # Exception: between 5 and 7 for rare vehicles if confidence is > 90%
-    is_rare = eval_data.vehicle_confidence >= 0.88 and eval_data.market_confidence >= 0.90
+    is_rare = eval_data.vehicle_confidence >= min_vehicle_conf and eval_data.market_confidence >= min_market_conf
     if eval_data.num_comparables < 8:
         if eval_data.num_comparables >= 5 and is_rare:
             pass # accepted rare exception
@@ -204,15 +227,15 @@ def is_aurea_opportunity(listing: Listing, eval_data: Evaluation, search: Search
         return False
         
     # Detail score criteria
-    if eval_data.reliability_score < 85.0:
+    if eval_data.reliability_score < min_reliability:
         return False
-    if eval_data.parts_availability_score < 80.0:
+    if eval_data.parts_availability_score < min_parts:
         return False
-    if eval_data.maintenance_score < 75.0:
+    if eval_data.maintenance_score < min_maint:
         return False
-    if eval_data.resale_score < 78.0:
+    if eval_data.resale_score < min_resale:
         return False
-    if eval_data.coherency_score < 92.0:
+    if eval_data.coherency_score < min_coherency:
         return False
         
     # Dimension checking

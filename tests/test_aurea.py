@@ -391,3 +391,31 @@ def test_preferred_fuel_bonus_and_ignore_discount(search_config):
     # Since minimum thresholds are 0.0, it qualifies as Aurea even without discount
     is_aurea = is_aurea_opportunity(listing, eval_data, search_config)
     assert is_aurea is True
+
+def test_dynamic_rating_threshold(search_config):
+    # Setup search config to require 10 rating and disable discount thresholds
+    search_config.alerting.required_rating = 10
+    search_config.price.minimum_adjusted_discount_percent = 0.0
+    search_config.price.minimum_adjusted_saving_eur = 0.0
+    
+    # Create evaluation data with a score_global of 91.0 (fails 10/10 which needs 95.0)
+    # but satisfies all other relaxed thresholds
+    listing = Listing(
+        source_id="rate_9", source="wallapop", title="Car", description="Desc",
+        url="http://test.com", price=12000, make="Toyota", model="Corolla", year=2021, mileage_km=70000,
+        fuel="diesel", transmission="automatic", location="Málaga, España"
+    )
+    market = MarketAnalysis(expected_price=12000.0, comparables_count=10, market_confidence=0.95)
+    eval_data = evaluate_listing(listing, market, 0.0, search=search_config)
+    
+    # Manually tweak global score to be 91.0 (between 90.0 and 95.0)
+    eval_data.score_global = 91.0
+    
+    # Under required_rating = 10, this should be False
+    assert is_aurea_opportunity(listing, eval_data, search_config) is False
+    
+    # Tweak config to allow 9 rating
+    search_config.alerting.required_rating = 9
+    
+    # Under required_rating = 9, this should be True
+    assert is_aurea_opportunity(listing, eval_data, search_config) is True

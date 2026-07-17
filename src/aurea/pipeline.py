@@ -150,7 +150,7 @@ def run_pipeline() -> Dict[str, int]:
                         listing.opportunity_id = f"AU-{next_num:06d}"
                     
                     listing.is_aurea = True
-                    listing.rating = 10.0
+                    listing.rating = 10.0 if eval_data.score_global >= 95.0 else 9.0
                     session.add(listing)
                     session.commit()
                     
