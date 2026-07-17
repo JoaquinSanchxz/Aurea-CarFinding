@@ -201,6 +201,14 @@ def run_pipeline() -> Dict[str, int]:
             logger.error(f"Error evaluating listing {listing.id}: {e}")
             
     session.close()
+    
+    if summary["alertas_enviadas"] == 0:
+        try:
+            from aurea.telegram import send_heartbeat_message
+            send_heartbeat_message(summary)
+        except Exception as e:
+            logger.error(f"Error sending Telegram heartbeat: {e}")
+            
     return summary
 
 def retry_failed_notifications():

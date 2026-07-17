@@ -17,36 +17,15 @@ class WallapopConnector(SourceConnector):
         # 1. Attempt live request if configured
         if not settings.scraping.use_fixtures_fallback:
             try:
-                # We attempt to search via Wallapop public API.
-                # Example endpoint: https://api.wallapop.com/shnm-portals/cars/search
-                # Since live endpoints are highly volatile and require headers/signatures,
-                # we wrap it in a try-catch and log failure.
-                params = {
-                    "min_sale_price": search.price.max_price_eur or 0,
-                    "max_sale_price": search.price.max_price_eur or 25000,
-                    "min_year": search.vehicle.min_year or 2019,
-                    "max_km": search.vehicle.max_mileage_km or 100000,
-                    "order_by": "newest"
-                }
-                
-                headers = {
-                    "User-Agent": settings.scraping.user_agent,
-                    "Accept": "application/json"
-                }
-                
-                r = httpx.get(
-                    "https://api.wallapop.com/shnm-portals/cars/search",
-                    params=params,
-                    headers=headers,
-                    timeout=settings.scraping.timeout_seconds
-                )
-                if r.status_code == 200:
-                    data = r.json()
-                    # Parse Wallapop API structure...
-                    # (Here we would map standard elements)
-                    pass
+                # We attempt to search via Wallapop with Selenium to bypass CloudFront blocks.
+                results = self._scrape_selenium(search, settings)
+                if results:
+                    logger.info(f"Successfully scraped {len(results)} live listings from Wallapop.")
+                    return results
+                else:
+                    logger.warning("No listings found during Wallapop live scraping. Falling back to fixtures.")
             except Exception as e:
-                logger.warning(f"Wallapop API request failed: {e}. Falling back to fixtures.")
+                logger.warning(f"Wallapop live scraping failed: {e}. Falling back to fixtures.")
 
         # 2. Load fixtures
         # Generate representative fixture listings matching search
@@ -67,6 +46,170 @@ class WallapopConnector(SourceConnector):
             results.append(f)
             
         return results
+
+    def _scrape_selenium(self, search: SearchConfig, settings) -> List[RawListing]:
+        from selenium import webdriver
+        from selenium.webdriver.chrome.service import Service
+        from selenium.webdriver.chrome.options import Options
+        from webdriver_manager.chrome import ChromeDriverManager
+        from bs4 import BeautifulSoup
+        import time
+        import re
+        from datetime import datetime
+        
+        # Determine center city coordinates for search
+        # Default to Madrid if location places are empty
+        place_name = "madrid"
+        if search.location.places:
+            place_name = search.location.places[0]
+            
+        # Coordinates helper matching clean logic
+        cleaned_place = place_name.lower()
+        for acc, pln in [('á','a'), ('é','e'), ('í','i'), ('ó','o'), ('ú','u'), ('ü','u'), ('ñ','n')]:
+            cleaned_place = cleaned_place.replace(acc, pln)
+            
+        # Predefined Coordinates
+        CITIES_COORDINATES = {
+            "rute": (37.3259, -4.3683),
+            "malaga": (36.7213, -4.4214),
+            "cordoba": (37.8882, -4.7794),
+            "lucena": (37.3995, -4.4842),
+            "madrid": (40.4168, -3.7038),
+            "barcelona": (41.3851, 2.1734),
+            "valencia": (39.4699, -0.3763),
+            "sevilla": (37.3891, -5.9845)
+        }
+        
+        lat, lon = CITIES_COORDINATES["madrid"]
+        for k, v in CITIES_COORDINATES.items():
+            if k in cleaned_place:
+                lat, lon = v
+                break
+                
+        # Build keywords
+        make_kw = search.vehicle.makes[0] if search.vehicle.makes else ""
+        model_kw = search.vehicle.models[0] if search.vehicle.models else ""
+        
+        # Build Wallapop search URL
+        min_p = 0
+        max_p = search.price.max_price_eur or 25000
+        min_y = search.vehicle.min_year or 2010
+        max_km = search.vehicle.max_mileage_km or 150000
+        
+        url = f"https://es.wallapop.com/app/search?category_ids=100&latitude={lat}&longitude={lon}&min_sale_price={min_p}&max_sale_price={max_p}&min_year={min_y}&max_km={max_km}&filters_source=search_box"
+        
+        if make_kw:
+            url += f"&keywords={make_kw}"
+            if model_kw:
+                url += f"+{model_kw}"
+                
+        logger.info(f"Navigating to Wallapop search: {url}")
+        
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument(f"user-agent={settings.scraping.user_agent}")
+        
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        
+        raw_listings = []
+        try:
+            driver.get(url)
+            time.sleep(5) # Allow page to render
+            
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            cards = soup.find_all("article", class_=lambda x: x and "RetrievalItemCard" in x)
+            logger.info(f"Found {len(cards)} card elements on Wallapop search page.")
+            
+            for card in cards:
+                texts = [t.strip() for t in card.find_all(string=True) if t.strip()]
+                if len(texts) < 3:
+                    continue
+                    
+                title = texts[0]
+                details_str = texts[1]
+                price_str = texts[2]
+                description = texts[3] if len(texts) > 3 else ""
+                
+                # Href/url
+                link_el = card.find("a", href=True)
+                if not link_el:
+                    continue
+                href = link_el["href"]
+                item_url = f"https://es.wallapop.com{href}" if href.startswith("/") else href
+                source_id = item_url.split("-")[-1] if "-" in item_url else item_url.split("/")[-1]
+                
+                # Parse price
+                price = 0.0
+                clean_price = "".join(c for c in price_str if c.isdigit())
+                if clean_price:
+                    price = float(clean_price)
+                    
+                # Parse details
+                year_val = None
+                mileage_km = 0
+                fuel = "other"
+                transmission = "manual"
+                
+                parts = [p.replace("\xa0", " ").strip() for p in details_str.split("·")]
+                for p in parts:
+                    p_lower = p.lower()
+                    if "km" in p_lower:
+                        digits = "".join(c for c in p if c.isdigit())
+                        if digits:
+                            mileage_km = int(digits)
+                    elif "cv" in p_lower or "hp" in p_lower:
+                        pass
+                    elif any(f in p_lower for f in ["diésel", "diesel", "gasolina", "híbrido", "hibrido", "hybrid", "eléctrico", "electrico", "electric"]):
+                        if "gasolina" in p_lower:
+                            fuel = "petrol"
+                        elif "diesel" in p_lower or "diésel" in p_lower:
+                            fuel = "diesel"
+                        elif "hibrido" in p_lower or "híbrido" in p_lower or "hybrid" in p_lower:
+                            fuel = "hybrid"
+                        elif "electrico" in p_lower or "eléctrico" in p_lower or "electric" in p_lower:
+                            fuel = "electric"
+                    elif len(p) == 4 and p.isdigit():
+                        year_val = int(p)
+                        
+                if not year_val:
+                    match = re.search(r"\b(20[0-2][0-6]|19[8-9][0-9])\b", title)
+                    if match:
+                        year_val = int(match.group(1))
+                if not year_val:
+                    year_val = datetime.now().year
+                    
+                # Make & Model from Title
+                words = title.split()
+                card_make = make_kw or (words[0] if words else "")
+                card_model = model_kw or (words[1] if len(words) > 1 else "")
+                
+                if card_make:
+                    card_make = card_make.capitalize()
+                
+                raw_listings.append(RawListing(
+                    source_id=source_id,
+                    source="wallapop",
+                    title=title,
+                    description=description,
+                    url=item_url,
+                    price=price,
+                    make=card_make,
+                    model=card_model,
+                    year=year_val,
+                    mileage_km=mileage_km,
+                    fuel=fuel,
+                    transmission=transmission,
+                    location=f"{place_name.capitalize()}, ES",
+                    published_at=datetime.utcnow().isoformat(),
+                    raw_data={"source": "wallapop", "id": source_id}
+                ))
+        finally:
+            driver.quit()
+            
+        return raw_listings
 
 def get_wallapop_fixtures() -> List[RawListing]:
     from datetime import timezone

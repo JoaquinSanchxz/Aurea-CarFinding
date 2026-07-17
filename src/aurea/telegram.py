@@ -135,6 +135,47 @@ def send_test_message() -> bool:
         logger.error(f"Telegram test connection error: {e}")
         return False
 
+def send_heartbeat_message(summary: dict) -> bool:
+    settings = load_settings()
+    bot_token = settings.telegram.bot_token
+    chat_id = settings.telegram.chat_id
+    
+    if not bot_token or not chat_id:
+        logger.error("Telegram credentials missing in settings.")
+        return False
+        
+    msg = f"""🔍 *Aurea está activo y buscando*
+No se han encontrado nuevas ofertas de vehículos en esta búsqueda.
+
+📊 *Resumen de la búsqueda:*
+• Encontrados en portales: {summary.get('encontrados', 0)}
+• Nuevos/analizados: {summary.get('nuevos', 0)}
+• Descartados por filtros: {summary.get('descartados', 0)}
+• Candidatos potenciales: {summary.get('candidatos', 0)}
+• Nuevas ofertas Aurea: {summary.get('aurea', 0)}
+
+El sistema sigue activo y monitorizando en segundo plano."""
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": msg,
+        "parse_mode": "Markdown"
+    }
+    
+    try:
+        r = httpx.post(url, json=payload, timeout=15)
+        if r.status_code == 200:
+            logger.info("Telegram heartbeat notification sent successfully.")
+            return True
+        else:
+            logger.error(f"Failed to send Telegram heartbeat. Status: {r.status_code}, Response: {r.text}")
+            return False
+    except Exception as e:
+        logger.error(f"Telegram heartbeat connection error: {e}")
+        return False
+
+
 def process_telegram_commands(session) -> None:
     import yaml
     from aurea.config import load_settings, PROJECT_ROOT
