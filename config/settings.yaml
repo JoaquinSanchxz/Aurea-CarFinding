@@ -1,0 +1,18 @@
+database:
+  url: "sqlite:///data/aurea.db"
+
+telegram:
+  bot_token: ""
+  chat_id: ""
+
+scraping:
+  timeout_seconds: 15
+  use_fixtures_fallback: true
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+analysis:
+  market_confidence_threshold: 0.90
+  vehicle_confidence_threshold: 0.88
+  minimum_comparables: 8
+  min_comparables_rare_vehicle: 5
+  rare_vehicle_confidence_threshold: 0.90

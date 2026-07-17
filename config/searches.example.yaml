@@ -1,0 +1,38 @@
+searches:
+  - id: busqueda_general
+    enabled: true
+
+    vehicle:
+      makes: []
+      models: []
+      min_year: 2010
+      max_mileage_km: 100000
+      fuels: []  # Empty means search any fuel type
+      preferred_fuels:
+        - diesel
+      transmissions: []
+      max_age_days: 30  # Listing less than 1 month old
+
+    price:
+      max_price_eur: 15000
+      minimum_adjusted_discount_percent: 0.0  # Discount is not taken into account
+      minimum_adjusted_saving_eur: 0.0        # Saving is not taken into account
+
+    location:
+      country: ES
+      places:
+        - cordoba
+        - malaga
+
+    alerting:
+      required_rating: 10
+      maximum_alerts_per_run: 2
+
+    exclusions:
+      damaged: true
+      mechanical_failure: true
+      financing_price: true
+      no_itv: true
+      professional_only: true
+      auction: true
+      incomplete_documentation: true

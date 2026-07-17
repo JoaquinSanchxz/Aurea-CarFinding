@@ -1,0 +1,12 @@
+# Local environment configuration
+.env
+
+# Python caching and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+
+# Local databases
+data/aurea.db
