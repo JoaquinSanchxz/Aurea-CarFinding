@@ -94,7 +94,20 @@ def process_duplicates_and_persist(session: Session, new_listings: List[Listing]
                 hist = PriceHistory(listing_id=duplicate_found.id, price=duplicate_found.price)
                 session.add(hist)
                 logger.info(f"Price change detected for {duplicate_found.title}: {duplicate_found.price} -> {new_l.price}")
+                
+                # If price dropped, allow re-notifying by clearing old notification status
+                if new_l.price < duplicate_found.price:
+                    from sqlmodel import text
+                    try:
+                        session.execute(
+                            text("UPDATE notification SET status = 'superseded_by_price_drop' WHERE listing_id = :id"),
+                            {"id": duplicate_found.id}
+                        )
+                    except Exception as e:
+                        logger.error(f"Error updating old notifications: {e}")
+                
                 duplicate_found.price = new_l.price
+                processed_listings.append(duplicate_found)
                 
             duplicate_found.last_seen_at = new_l.last_seen_at
             

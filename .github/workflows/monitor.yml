@@ -31,10 +31,10 @@ jobs:
       run: |
         .venv/bin/python -m aurea run
 
-    - name: Commit and Push DB Changes
+    - name: Commit and Push DB and Config Changes
       run: |
         git config --global user.name "Aurea Bot"
         git config --global user.email "aurea-bot@users.noreply.github.com"
-        git add -f data/aurea.db || true
-        git commit -m "chore: auto-update database [skip ci]" || true
+        git add -f data/aurea.db config/searches.yaml || true
+        git commit -m "chore: auto-update database and search settings [skip ci]" || true
         git push || true

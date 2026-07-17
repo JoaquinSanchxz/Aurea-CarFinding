@@ -97,3 +97,9 @@ class ExecutionError(SQLModel, table=True):
     source: Optional[str] = None
     error_message: str
     occurred_at: datetime = Field(default_factory=datetime.utcnow)
+
+class LocationCoordinate(SQLModel, table=True):
+    name: str = Field(primary_key=True)
+    latitude: float
+    longitude: float
+

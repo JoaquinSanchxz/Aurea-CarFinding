@@ -55,6 +55,7 @@ def double_validate_opportunity(session: Session, listing: Listing, eval_data: E
 def run_pipeline() -> Dict[str, int]:
     # Initialize DB
     init_db()
+    session = get_session()
     
     summary = {
         "encontrados": 0,
@@ -66,6 +67,13 @@ def run_pipeline() -> Dict[str, int]:
         "alertas_enviadas": 0
     }
     
+    # Process Telegram commands to update searches.yaml dynamically
+    try:
+        from aurea.telegram import process_telegram_commands
+        process_telegram_commands(session)
+    except Exception as e:
+        logger.error(f"Error processing Telegram commands: {e}")
+    
     searches = load_searches()
     if not searches:
         logger.warning("No searches configured or enabled.")
@@ -76,8 +84,6 @@ def run_pipeline() -> Dict[str, int]:
         MilanunciosConnector(),
         CochesNetConnector()
     ]
-    
-    session = get_session()
     
     # Step 1: Collect raw listings from all sources
     raw_listings = []
@@ -93,6 +99,9 @@ def run_pipeline() -> Dict[str, int]:
             except Exception as e:
                 logger.error(f"Error collecting from {conn.name}: {e}")
                 
+    # Sort collected raw listings by publication date (newest first)
+    raw_listings.sort(key=lambda x: x.published_at or "", reverse=True)
+                
     # Step 2: Normalize and pre-filter
     valid_listings: List[Listing] = []
     for raw in raw_listings:
@@ -100,7 +109,7 @@ def run_pipeline() -> Dict[str, int]:
             listing = normalize_listing(raw)
             # Fetch active search config (using the first one for this simplified pipeline)
             search = searches[0]
-            keep, discard_reason = pre_filter_listing(listing, search)
+            keep, discard_reason = pre_filter_listing(listing, search, session=session)
             if keep:
                 logger.info(f"VISTO [OK]: {listing.source.upper()} | {listing.make} {listing.model} | {listing.price}€ | {listing.year} | {listing.mileage_km}km | {listing.location}")
                 valid_listings.append(listing)

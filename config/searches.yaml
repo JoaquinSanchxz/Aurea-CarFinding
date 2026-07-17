@@ -14,15 +14,15 @@ searches:
       max_age_days: 30  # Listing less than 1 month old
 
     price:
-      max_price_eur: 15000
+      max_price_eur: 10000
       minimum_adjusted_discount_percent: 0.0  # Discount is not taken into account
       minimum_adjusted_saving_eur: 0.0        # Saving is not taken into account
 
     location:
       country: ES
       places:
-        - cordoba
-        - malaga
+        - rute
+      radius_km: 50
 
     alerting:
       required_rating: 9

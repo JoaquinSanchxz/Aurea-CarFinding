@@ -227,7 +227,7 @@ def test_republications_and_price_history(db_session):
     
     unique_list = process_duplicates_and_persist(db_session, [new_listing])
     # Should not insert a new listing, should return the existing updated listing
-    assert len(unique_list) == 0  # Since it merged into existing
+    assert len(unique_list) == 1  # Returned for re-evaluation
     
     # Fetch existing and check price is updated and price history contains old price
     db_session.expire_all()
@@ -419,3 +419,24 @@ def test_dynamic_rating_threshold(search_config):
     
     # Under required_rating = 9, this should be True
     assert is_aurea_opportunity(listing, eval_data, search_config) is True
+
+def test_geocoding_cache(db_session):
+    from aurea.filters import get_distance_km
+    from aurea.models import LocationCoordinate
+    
+    # Baena is not in CITIES_COORDINATES, so it must query Nominatim and cache it
+    dist = get_distance_km("Rute", "Baena, ES", session=db_session)
+    assert dist is not None
+    assert 30.0 < dist < 45.0  # Baena is around 36 km from Rute
+    
+    # Check cache table has Baena
+    db_session.expire_all()
+    cached = db_session.get(LocationCoordinate, "baena")
+    assert cached is not None
+    assert 37.0 < cached.latitude < 38.0
+    assert -4.5 < cached.longitude < -4.0
+    
+    # Request without session should return None because it is not in predefined dict
+    dist_no_session = get_distance_km("Rute", "Baena, ES", session=None)
+    assert dist_no_session is None
+

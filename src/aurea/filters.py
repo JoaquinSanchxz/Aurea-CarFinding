@@ -1,10 +1,109 @@
 import re
+import math
 import logging
 from datetime import datetime, timedelta
+from typing import Optional
 from aurea.models import Listing
 from aurea.config import SearchConfig
 
 logger = logging.getLogger("aurea.filters")
+
+CITIES_COORDINATES = {
+    "rute": (37.3259, -4.3683),
+    "malaga": (36.7213, -4.4214),
+    "cordoba": (37.8882, -4.7794),
+    "lucena": (37.3995, -4.4842),
+    "cabra": (37.4719, -4.4421),
+    "priego de cordoba": (37.4385, -4.1950),
+    "iznajar": (37.2568, -4.3117),
+    "loja": (37.1664, -4.1523),
+    "antequera": (37.0184, -4.5601),
+    "sevilla": (37.3891, -5.9845),
+    "granada": (37.1773, -3.5986),
+    "madrid": (40.4168, -3.7038),
+    "barcelona": (41.3851, 2.1734),
+    "valencia": (39.4699, -0.3763),
+    "murcia": (37.9922, -1.1307),
+    "gijon": (43.5357, -5.6615),
+    "bilbao": (43.2630, -2.9350),
+    "zaragoza": (41.6488, -0.8891),
+    "girona": (41.9794, 2.8214),
+    "alicante": (38.3452, -0.4810),
+}
+
+def get_distance_km(loc1_name: str, loc2_name: str, session=None) -> Optional[float]:
+    def clean(name: str) -> str:
+        name = name.lower()
+        for acc, pln in [('á','a'), ('é','e'), ('í','i'), ('ó','o'), ('ú','u'), ('ü','u'), ('ñ','n')]:
+            name = name.replace(acc, pln)
+        return name.strip()
+        
+    def get_coords(name: str) -> Optional[tuple[float, float]]:
+        cleaned = clean(name)
+        # 1. Check pre-defined dictionary
+        for k, v in CITIES_COORDINATES.items():
+            if k in cleaned:
+                return v
+                
+        # 2. Check DB / Nominatim cache if session is provided
+        if session:
+            city_part = cleaned.split(",")[0].strip()
+            if not city_part:
+                return None
+                
+            from sqlmodel import select
+            from aurea.models import LocationCoordinate
+            
+            stmt = select(LocationCoordinate).where(LocationCoordinate.name == city_part)
+            try:
+                cached = session.exec(stmt).first()
+                if cached:
+                    return (cached.latitude, cached.longitude)
+            except Exception as e:
+                logger.error(f"Error reading coordinates from cache: {e}")
+                
+            # If not in cache, query Nominatim
+            import httpx
+            url = "https://nominatim.openstreetmap.org/search"
+            headers = {"User-Agent": "Aurea-CarFinding/1.0 (antigravity@google.com)"}
+            params = {"q": f"{city_part}, Spain", "format": "json", "limit": 1}
+            try:
+                r = httpx.get(url, headers=headers, params=params, timeout=5)
+                if r.status_code == 200 and r.json():
+                    data = r.json()[0]
+                    lat = float(data["lat"])
+                    lon = float(data["lon"])
+                    
+                    # Cache it
+                    try:
+                        coord = LocationCoordinate(name=city_part, latitude=lat, longitude=lon)
+                        session.add(coord)
+                        session.commit()
+                        logger.info(f"Geocoded and cached coordinates for '{city_part}': ({lat}, {lon})")
+                        return (lat, lon)
+                    except Exception as e:
+                        logger.error(f"Error caching coordinates: {e}")
+                        return (lat, lon)
+            except Exception as e:
+                logger.error(f"Error geocoding {city_part}: {e}")
+                
+        return None
+
+    c1 = get_coords(loc1_name)
+    c2 = get_coords(loc2_name)
+    
+    if not c1 or not c2:
+        return None
+        
+    lat1, lon1 = c1
+    lat2, lon2 = c2
+    R = 6371.0 # Radius of Earth in km
+    
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
 
 def has_negated_keyword(text: str, keywords: list[str], negation_words: list[str]) -> bool:
     text = text.lower()
@@ -67,7 +166,7 @@ def is_auction_or_embargo(listing: Listing) -> bool:
     combined = f"{listing.title} {listing.description}"
     return has_negated_keyword(combined, keywords, negation_words)
 
-def pre_filter_listing(listing: Listing, search: SearchConfig) -> tuple[bool, str]:
+def pre_filter_listing(listing: Listing, search: SearchConfig, session=None) -> tuple[bool, str]:
     """
     Evaluates basic filter rules.
     Returns (keep, reason_for_discard)
@@ -97,15 +196,34 @@ def pre_filter_listing(listing: Listing, search: SearchConfig) -> tuple[bool, st
             for acc, pln in [('á','a'), ('é','e'), ('í','i'), ('ó','o'), ('ú','u'), ('ü','u'), ('ñ','n')]:
                 t = t.replace(acc, pln)
             return t.strip()
-            
-        loc_match = False
-        listing_loc = clean_text(listing.location) if listing.location else ""
-        for place in search.location.places:
-            if clean_text(place) in listing_loc:
-                loc_match = True
-                break
-        if not loc_match:
-            return False, f"Ubicación no deseada: {listing.location}"
+
+        # If a radius is specified, check the distance
+        if search.location.radius_km is not None:
+            center_place = search.location.places[0]
+            dist = get_distance_km(center_place, listing.location, session=session)
+            if dist is not None:
+                if dist > search.location.radius_km:
+                    return False, f"Fuera del radio de {search.location.radius_km} km (distancia: {dist:.1f} km)"
+            else:
+                # Fallback to place substring match if coordinates are not available
+                loc_match = False
+                listing_loc = clean_text(listing.location) if listing.location else ""
+                for place in search.location.places:
+                    if clean_text(place) in listing_loc:
+                        loc_match = True
+                        break
+                if not loc_match:
+                    return False, f"Ubicación no deseada (no coincide con el centro): {listing.location}"
+        else:
+            # Traditional place substring match
+            loc_match = False
+            listing_loc = clean_text(listing.location) if listing.location else ""
+            for place in search.location.places:
+                if clean_text(place) in listing_loc:
+                    loc_match = True
+                    break
+            if not loc_match:
+                return False, f"Ubicación no deseada: {listing.location}"
 
     # 2. Exclude sold or reserved
     combined = f"{listing.title} {listing.description}".lower()
