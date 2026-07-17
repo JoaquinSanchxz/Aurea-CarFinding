@@ -208,11 +208,15 @@ def is_aurea_opportunity(listing: Listing, eval_data: Evaluation, search: Search
     if eval_data.vehicle_confidence < min_vehicle_conf:
         return False
         
-    # Comparables count
-    # Exception: between 5 and 7 for rare vehicles if confidence is > 90%
+    # Comparables count (loaded dynamically from settings.yaml)
+    from aurea.config import load_settings
+    settings = load_settings()
+    min_comp = settings.analysis.minimum_comparables
+    min_comp_rare = settings.analysis.min_comparables_rare_vehicle
+    
     is_rare = eval_data.vehicle_confidence >= min_vehicle_conf and eval_data.market_confidence >= min_market_conf
-    if eval_data.num_comparables < 8:
-        if eval_data.num_comparables >= 5 and is_rare:
+    if eval_data.num_comparables < min_comp:
+        if eval_data.num_comparables >= min_comp_rare and is_rare:
             pass # accepted rare exception
         else:
             return False

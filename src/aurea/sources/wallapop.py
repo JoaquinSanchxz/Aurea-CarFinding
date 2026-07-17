@@ -253,4 +253,22 @@ def get_wallapop_fixtures() -> List[RawListing]:
             published_at=(now - timedelta(hours=3)).isoformat(),
             raw_data={"source": "wallapop", "id": "wp_010"}
         ),
+        # Fixture 11: Perfect 9/10 Aurea diesel candidate in Malaga/Cordoba region
+        RawListing(
+            source_id="wp_011",
+            source="wallapop",
+            title="Volkswagen Golf 2.0 TDI 150cv Sport",
+            description="Coche impecable en perfecto estado. Un solo propietario, km certificados, mantenimiento oficial, neumáticos nuevos, siempre en garaje, muy cuidado.",
+            url="https://es.wallapop.com/item/vw-golf-tdi-wp_011",
+            price=12500.0,
+            make="Volkswagen",
+            model="Golf",
+            year=2018,
+            mileage_km=85000,
+            fuel="diesel",
+            transmission="manual",
+            location="Málaga, ES",
+            published_at=(now - timedelta(hours=2)).isoformat(),
+            raw_data={"source": "wallapop", "id": "wp_011"}
+        ),
     ]

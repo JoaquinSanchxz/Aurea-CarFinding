@@ -178,4 +178,69 @@ def get_coches_net_fixtures() -> List[RawListing]:
             published_at=(now - timedelta(days=5)).isoformat(),
             raw_data={"source": "coches_net", "id": "cn_008"}
         ),
+        # Comparable Golfs to satisfy market analysis for the Malaga search
+        RawListing(
+            source_id="cn_golf_01", source="coches_net",
+            title="Volkswagen Golf 2.0 TDI Edition", description="Buen estado.",
+            url="https://www.coches.net/vw-golf-cn_golf_01.aspx",
+            price=14500.0, make="Volkswagen", model="Golf", year=2018, mileage_km=82000,
+            fuel="diesel", transmission="manual", location="Málaga, ES",
+            published_at=(now - timedelta(days=1)).isoformat(), raw_data={}
+        ),
+        RawListing(
+            source_id="cn_golf_02", source="coches_net",
+            title="Volkswagen Golf 2.0 TDI Advance", description="Revisiones al día.",
+            url="https://www.coches.net/vw-golf-cn_golf_02.aspx",
+            price=14200.0, make="Volkswagen", model="Golf", year=2018, mileage_km=88000,
+            fuel="diesel", transmission="manual", location="Córdoba, ES",
+            published_at=(now - timedelta(days=2)).isoformat(), raw_data={}
+        ),
+        RawListing(
+            source_id="cn_golf_03", source="coches_net",
+            title="Volkswagen Golf 1.6 TDI", description="Buen estado general.",
+            url="https://www.coches.net/vw-golf-cn_golf_03.aspx",
+            price=13900.0, make="Volkswagen", model="Golf", year=2018, mileage_km=90000,
+            fuel="diesel", transmission="manual", location="Málaga, ES",
+            published_at=(now - timedelta(days=3)).isoformat(), raw_data={}
+        ),
+        RawListing(
+            source_id="cn_golf_04", source="coches_net",
+            title="Volkswagen Golf 2.0 TDI DSG", description=" DSG automático.",
+            url="https://www.coches.net/vw-golf-cn_golf_04.aspx",
+            price=14900.0, make="Volkswagen", model="Golf", year=2018, mileage_km=80000,
+            fuel="diesel", transmission="automatic", location="Málaga, ES",
+            published_at=(now - timedelta(days=1)).isoformat(), raw_data={}
+        ),
+        RawListing(
+            source_id="cn_golf_05", source="coches_net",
+            title="Volkswagen Golf TDI Sport", description="Único dueño.",
+            url="https://www.coches.net/vw-golf-cn_golf_05.aspx",
+            price=14600.0, make="Volkswagen", model="Golf", year=2018, mileage_km=84000,
+            fuel="diesel", transmission="manual", location="Córdoba, ES",
+            published_at=(now - timedelta(days=2)).isoformat(), raw_data={}
+        ),
+        RawListing(
+            source_id="cn_golf_06", source="coches_net",
+            title="Volkswagen Golf 2.0 TDI GTD look", description="Perfecto estado.",
+            url="https://www.coches.net/vw-golf-cn_golf_06.aspx",
+            price=14800.0, make="Volkswagen", model="Golf", year=2018, mileage_km=86000,
+            fuel="diesel", transmission="manual", location="Málaga, ES",
+            published_at=(now - timedelta(days=4)).isoformat(), raw_data={}
+        ),
+        RawListing(
+            source_id="cn_golf_07", source="coches_net",
+            title="Volkswagen Golf 1.6 TDI", description="Muy cuidado.",
+            url="https://www.coches.net/vw-golf-cn_golf_07.aspx",
+            price=13800.0, make="Volkswagen", model="Golf", year=2018, mileage_km=92000,
+            fuel="diesel", transmission="manual", location="Córdoba, ES",
+            published_at=(now - timedelta(days=2)).isoformat(), raw_data={}
+        ),
+        RawListing(
+            source_id="cn_golf_08", source="coches_net",
+            title="Volkswagen Golf 2.0 TDI", description="Garantía incluida.",
+            url="https://www.coches.net/vw-golf-cn_golf_08.aspx",
+            price=14300.0, make="Volkswagen", model="Golf", year=2018, mileage_km=85000,
+            fuel="diesel", transmission="manual", location="Málaga, ES",
+            published_at=(now - timedelta(days=3)).isoformat(), raw_data={}
+        ),
     ]
