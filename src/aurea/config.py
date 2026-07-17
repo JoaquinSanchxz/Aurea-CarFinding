@@ -85,6 +85,20 @@ class Settings(BaseSettings):
     )
 
 def load_settings() -> Settings:
+    # Load .env file manually into os.environ if it exists
+    env_path = PROJECT_ROOT / ".env"
+    if env_path.exists():
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, val = line.split("=", 1)
+                    os.environ[key.strip()] = val.strip().strip("'\"")
+        except Exception:
+            pass
+
     # 1. Load defaults
     settings_dict = {}
     
